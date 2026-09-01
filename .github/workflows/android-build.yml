@@ -1,0 +1,115 @@
+name: RHTN - Build Android APK
+
+# V95 — REKONSTRIKSYON: 2 bagay t ap bloke ansyen workflow la nèt, anvan
+# menm li rive nan Gradle:
+#   1) android/local.properties te gen yon sdk.dir kodifye pou yon machin
+#      lokal (/home/user/Android/Sdk) — KOMITE nan repo a. Gradle li fichye
+#      sa AVAN li gade ANDROID_HOME, kidonk CI a te toujou echwe. Korije:
+#      fichye a netwaye + mete nan .gitignore.
+#   2) scripts/sync-android-assets.sh pa t egziste — kounye a li kreye.
+#
+# Anba a, mwen retire doub-travay: ansyen workflow la te enstale Android
+# SDK 2 fwa (yon fwa pa android-actions/setup-android, yon lòt fwa
+# manyèlman ak sdkmanager + yon step separe pou lisans), epi li te fè yon
+# `./gradlew clean` initil sou yon checkout ki fenk fèt (pa gen anyen pou
+# netwaye). setup-android@v3 la sèl ka enstale platfòm/build-tools yo AK
+# aksepte lisans yo nan YON sèl step.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - "android/**"
+      - "public/**"
+      - "scripts/sync-android-assets.sh"
+      - ".github/workflows/android-build.yml"
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "android/**"
+      - "public/**"
+      - "scripts/sync-android-assets.sh"
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    name: Build APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # gradle/actions/setup-gradle mete cache Gradle a (wrapper +
+      # dependencies) otomatikman — pa bezwen konfigire cache manyèlman.
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # Sèl step SDK — enstale platfòm 34 + build-tools 34.0.0 AK aksepte
+      # lisans yo an menm tan. (Sa ranplase 3 step ansyen workflow la:
+      # setup-android + sdkmanager manyèl + accept-licenses.)
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: "platform-tools platforms;android-34 build-tools;34.0.0"
+
+      - name: Sync public/ into Android assets (local WebView app)
+        run: |
+          chmod +x scripts/sync-android-assets.sh
+          ./scripts/sync-android-assets.sh
+
+      - name: Grant execute permission to gradlew
+        working-directory: android
+        run: chmod +x ./gradlew
+
+      # V95 — Google Services / Firebase opsyonèl: build.gradle.kts la
+      # deja verifye si google-services.json prezan anvan li aplike
+      # plugin Firebase la, donk build la pa kraze si sekrè a pa la.
+      - name: Restore google-services.json (si sekrè a egziste)
+        if: ${{ secrets.GOOGLE_SERVICES_JSON != '' }}
+        working-directory: android
+        run: echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 -d > app/google-services.json
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: JADSTACK-LOTTO-APK-debug
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      # Release APK — non-siyen otomatikman si pa gen keystore configuré
+      # (app/build.gradle.kts la deja jere sa, li pa ka kraze build la).
+      - name: Decode signing keystore (si sekrè a egziste)
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        working-directory: android
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > app/release.keystore
+
+      - name: Build release APK
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: JADSTACK-LOTTO-APK-release
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 30
