@@ -1,4 +1,19 @@
-name: RHTN - Build Android 
+name: RHTN - Build Android APK
+
+# V95 — REKONSTRIKSYON: 2 bagay t ap bloke ansyen workflow la nèt, anvan
+# menm li rive nan Gradle:
+#   1) android/local.properties te gen yon sdk.dir kodifye pou yon machin
+#      lokal (/home/user/Android/Sdk) — KOMITE nan repo a. Gradle li fichye
+#      sa AVAN li gade ANDROID_HOME, kidonk CI a te toujou echwe. Korije:
+#      fichye a netwaye + mete nan .gitignore.
+#   2) scripts/sync-android-assets.sh pa t egziste — kounye a li kreye.
+#
+# Anba a, mwen retire doub-travay: ansyen workflow la te enstale Android
+# SDK 2 fwa (yon fwa pa android-actions/setup-android, yon lòt fwa
+# manyèlman ak sdkmanager + yon step separe pou lisans), epi li te fè yon
+# `./gradlew clean` initil sou yon checkout ki fenk fèt (pa gen anyen pou
+# netwaye). setup-android@v3 la sèl ka enstale platfòm/build-tools yo AK
+# aksepte lisans yo nan YON sèl step.
 
 on:
   workflow_dispatch:
@@ -42,8 +57,13 @@ jobs:
       # Sèl step SDK — enstale platfòm 34 + build-tools 34.0.0 AK aksepte
       # lisans yo an menm tan. (Sa ranplase 3 step ansyen workflow la:
       # setup-android + sdkmanager manyèl + accept-licenses.)
+      # V95 — KOREKSYON: android-actions/setup-android@v3 pa rezoud ankò
+      # (pwojè a fè yon gwo mizajou rive nan v4). Yon `uses:` ki pa ka
+      # rezoud fè TOUT workflow la echwe nan etap "Set up job" la — AVAN
+      # menm premye step lan kòmanse egzekite. Se sa ki t ap "kraze"
+      # workflow la san l pa fè menm 1 segonn travay.
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
         with:
           packages: "platform-tools platforms;android-34 build-tools;34.0.0"
 
