@@ -1,19 +1,4 @@
-name: RHTN - Build Android APK
-
-# V95 — REKONSTRIKSYON: 2 bagay t ap bloke ansyen workflow la nèt, anvan
-# menm li rive nan Gradle:
-#   1) android/local.properties te gen yon sdk.dir kodifye pou yon machin
-#      lokal (/home/user/Android/Sdk) — KOMITE nan repo a. Gradle li fichye
-#      sa AVAN li gade ANDROID_HOME, kidonk CI a te toujou echwe. Korije:
-#      fichye a netwaye + mete nan .gitignore.
-#   2) scripts/sync-android-assets.sh pa t egziste — kounye a li kreye.
-#
-# Anba a, mwen retire doub-travay: ansyen workflow la te enstale Android
-# SDK 2 fwa (yon fwa pa android-actions/setup-android, yon lòt fwa
-# manyèlman ak sdkmanager + yon step separe pou lisans), epi li te fè yon
-# `./gradlew clean` initil sou yon checkout ki fenk fèt (pa gen anyen pou
-# netwaye). setup-android@v3 la sèl ka enstale platfòm/build-tools yo AK
-# aksepte lisans yo nan YON sèl step.
+name: RHTN - Build Android 
 
 on:
   workflow_dispatch:
